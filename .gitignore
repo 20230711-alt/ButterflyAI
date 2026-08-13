@@ -1,0 +1,11 @@
+# Chặn dependencies của Frontend
+node_modules/
+frontend/node_modules/
+.next/
+
+# Chặn cache của Python
+__pycache__/
+*.pyc
+
+# (Tùy chọn) Chặn file model AI quá lớn nếu không dùng Git LFS
+backend/models/butterfly_resnet50.pth
