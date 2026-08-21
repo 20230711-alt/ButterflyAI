@@ -42,7 +42,6 @@ export default function PredictPage() {
       // Tự động gửi ảnh sang API Backend để nhận diện
       sendImageToBackend(savedImage);
     }
-    // LƯU Ý: Tuyệt đối không dùng localStorage.removeItem() để giữ dữ liệu khi quay lại/F5
   }, []);
 
   // 2. Hàm chuyển đổi chuỗi Base64 thành Blob để gửi FormData sang API FastAPI
@@ -57,9 +56,68 @@ export default function PredictPage() {
     return new Blob([uInt8Array], { type: contentType });
   };
 
+  // Hàm dịch văn bản từ Tiếng Anh sang Tiếng Việt
+  const translateToVietnamese = async (text: string) => {
+    try {
+      const res = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|vi`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.responseData && data.responseData.translatedText) {
+          return data.responseData.translatedText;
+        }
+      }
+    } catch (error) {
+      console.error("Lỗi dịch sang Tiếng Việt:", error);
+    }
+    return text;
+  };
+
+  // Hàm tự động lấy thông tin từ Wikipedia API và DỊCH SANG TIẾNG VIỆT
+  const fetchWikipediaInfo = async (speciesName: string) => {
+    try {
+      const formattedName = speciesName
+        .trim()
+        .toLowerCase()
+        .replace(/(^\w|\s\w)/g, (m) => m.toUpperCase())
+        .replace(/\s+/g, "_");
+
+      const queriesToTry = [
+        formattedName,
+        `${formattedName}_(moth)`,
+        `${formattedName}_(butterfly)`,
+        encodeURIComponent(speciesName.trim().replace(/\s+/g, "_")),
+      ];
+
+      for (const query of queriesToTry) {
+        const res = await fetch(
+          `https://en.wikipedia.org/api/rest_v1/page/summary/${query}`
+        );
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.extract) {
+            // Tự động dịch đoạn văn bản từ Wikipedia sang tiếng Việt
+            const translatedDescription = await translateToVietnamese(data.extract);
+            return {
+              description: translatedDescription,
+              description_vietnamese:
+                data.description || "Loài bướm trong họ Papilionidae.",
+            };
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Lỗi tra cứu Wikipedia:", error);
+    }
+    return null;
+  };
+
   // 3. Hàm gọi Backend FastAPI (Endpoint: http://localhost:8000/predict)
   const sendImageToBackend = async (base64Image: string) => {
     setLoading(true);
+    setResult(null); // Reset kết quả cũ trước khi nhận diện mới
     try {
       const imageBlob = base64ToBlob(base64Image);
       const formData = new FormData();
@@ -71,32 +129,33 @@ export default function PredictPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const res = await response.json();
+        const predictionData = res.data || res;
+
+        // Tra cứu Wikipedia
+        const wikiInfo = await fetchWikipediaInfo(predictionData.predicted_class);
+
         setResult({
-          predicted_class: data.predicted_class || "Monarch Butterfly",
-          confidence: data.confidence || 94.6,
-          family: data.family || "Nymphalidae",
-          habitat: data.habitat || "Vườn hoa, đồng cỏ, rừng thưa",
-          distribution: data.distribution || "Bắc Mỹ, Nam Mỹ, Châu Á, Châu Úc",
+          predicted_class: predictionData.predicted_class,
+          confidence: predictionData.confidence,
+          family: predictionData.family || "Papilionidae (Họ Bướm phượng)",
+          habitat: predictionData.habitat || "Rừng nhiệt đới, cánh đồng hoa",
+          distribution: predictionData.distribution || "Toàn cầu / Bắc Mỹ",
           features:
-            data.features ||
-            "Bướm vua có màu cam đặc trưng với các đường gân đen và chấm trắng trên viền cánh.",
+            wikiInfo?.description ||
+            predictionData.features ||
+            "Chưa có thông tin đặc điểm.",
         });
       } else {
-        throw new Error("Lỗi kết nối Server");
+        throw new Error(
+          "Server Backend trả về lỗi (mã status: " + response.status + ")"
+        );
       }
     } catch (error) {
       console.error("Error predicting image:", error);
-      // Mẫu kết quả mặc định hiển thị giao diện khi Backend chưa chạy
-      setResult({
-        predicted_class: "Monarch Butterfly",
-        confidence: 94.6,
-        family: "Nymphalidae",
-        habitat: "Vườn hoa, đồng cỏ, rừng thưa",
-        distribution: "Bắc Mỹ, Nam Mỹ, Châu Á, Châu Úc",
-        features:
-          "Bướm vua có màu cam đặc trưng với các đường gân đen và chấm trắng trên viền cánh.",
-      });
+      alert(
+        "Không thể kết nối đến máy chủ AI (http://localhost:8000/predict). Hãy chắc chắn bạn đã bật server Backend!"
+      );
     } finally {
       setLoading(false);
     }
@@ -359,43 +418,51 @@ export default function PredictPage() {
                 </div>
 
                 {/* Thông tin chi tiết */}
-                <div className="space-y-2.5 text-xs">
-                  <h5 className="font-bold text-gray-800 border-b pb-1">
-                    Thông tin chi tiết
-                  </h5>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Họ:</span>
-                    <span className="font-medium text-gray-800">
-                      {result.family}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Môi trường sống:</span>
-                    <span className="font-medium text-gray-800">
-                      {result.habitat}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Phân bố:</span>
-                    <span className="font-medium text-gray-800">
-                      {result.distribution}
-                    </span>
-                  </div>
-                  <div className="pt-1">
-                    <span className="text-gray-500 block mb-1">
-                      Đặc điểm nổi bật:
-                    </span>
-                    <p className="text-gray-700 bg-gray-50 p-2.5 rounded-xl text-[11px] leading-relaxed">
-                      {result.features}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 flex items-center justify-center min-h-[300px] text-gray-400 text-xs">
-                Hãy chọn ảnh để hiển thị kết quả nhận diện.
-              </div>
-            )}
+<div className="space-y-2.5 text-xs">
+  <h5 className="font-bold text-gray-800 border-b pb-1">
+    Thông tin chi tiết
+  </h5>
+
+  {/* Grid 2 cột cho Họ và Môi trường sống */}
+  <div className="grid grid-cols-2 gap-2 border-b pb-2">
+    <div>
+      <span className="text-gray-400 block text-[11px] font-medium mb-0.5">Họ:</span>
+      <span className="font-semibold text-gray-800 leading-tight block">
+        {result.family}
+      </span>
+    </div>
+    <div>
+      <span className="text-gray-400 block text-[11px] font-medium mb-0.5">Môi trường sống:</span>
+      <span className="font-medium text-gray-700 leading-tight block line-clamp-2">
+        {result.habitat}
+      </span>
+    </div>
+  </div>
+
+  {/* Phân bố */}
+  <div className="border-b pb-2">
+    <span className="text-gray-400 block text-[11px] font-medium mb-0.5">Phân bố:</span>
+    <span className="font-medium text-gray-700 leading-tight block line-clamp-2">
+      {result.distribution}
+    </span>
+  </div>
+
+  {/* Đặc điểm nổi bật - Cố định chiều cao & Có thanh cuộn */}
+  <div className="pt-0.5">
+    <span className="text-gray-400 block text-[11px] font-medium mb-1">
+      Đặc điểm nổi bật:
+    </span>
+    <div className="bg-gray-50/80 p-2.5 rounded-lg text-gray-700 text-[11px] leading-relaxed max-h-28 overflow-y-auto border border-gray-100 text-justify custom-scrollbar">
+      {result.features}
+    </div>
+  </div>
+</div>
+</div>
+) : (
+<div className="flex-1 flex items-center justify-center min-h-[300px] text-gray-400 text-xs">
+  Hãy chọn ảnh để hiển thị kết quả nhận diện.
+</div>
+)}
 
             {/* Thao tác kết quả */}
             <div className="flex gap-3 mt-6 pt-4 border-t">
