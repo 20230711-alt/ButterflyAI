@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Home,
   Scan,
@@ -17,75 +18,111 @@ import {
 } from "lucide-react";
 
 export default function HomePage() {
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // Danh sách loài bướm mẫu
+  // Đường dẫn ảnh mặc định
+  const DEFAULT_IMAGE = "/images/monarch.jpg";
+
+  // Khởi tạo state: Ưu tiên lấy ảnh vừa chọn gần nhất từ localStorage
+  const [previewUrl, setPreviewUrl] = useState<string>(DEFAULT_IMAGE);
+
+  // Đọc ảnh gần nhất từ localStorage ngay khi trang chủ load
+  useEffect(() => {
+    const savedImage = localStorage.getItem("latest_uploaded_image");
+    if (savedImage) {
+      setPreviewUrl(savedImage);
+    }
+  }, []);
+
+  // Danh sách các loài bướm mẫu hiển thị bên dưới
   const speciesList = [
     {
       name: "Monarch Butterfly",
       scientific: "Danaus plexippus",
-      image:
-        "https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?q=80&w=600&auto=format&fit=crop",
+      image: "/images/monarch.jpg",
     },
     {
       name: "Swallowtail Butterfly",
       scientific: "Papilio machaon",
-      image:
-        "https://images.unsplash.com/photo-1557008075-7f2c5efa4cfd?q=80&w=600&auto=format&fit=crop",
+      image: "/images/swallowtail.jpg",
     },
     {
       name: "Painted Lady",
       scientific: "Vanessa cardui",
-      image:
-        "https://images.unsplash.com/photo-1535083783855-76ae62b2914e?q=80&w=600&auto=format&fit=crop",
+      image: "/images/painted_lady.jpg",
     },
     {
       name: "Peacock Butterfly",
       scientific: "Aglais io",
-      image:
-        "https://images.unsplash.com/photo-1563281577-a7be47e20db9?q=80&w=600&auto=format&fit=crop",
+      image: "/images/peacock.jpg",
     },
     {
       name: "Common Blue",
       scientific: "Polyommatus icarus",
-      image:
-        "https://images.unsplash.com/photo-1543852786-1cf6624b9987?q=80&w=600&auto=format&fit=crop",
+      image: "/images/common_blue.jpg",
     },
   ];
 
+  // Xử lý chung khi người dùng chọn/kéo thả File ảnh
+  const processFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      alert("Vui lòng chọn file hình ảnh định dạng JPG, JPEG hoặc PNG!");
+      return;
+    }
+
+    setSelectedFile(file);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (reader.result) {
+        const base64Image = reader.result as string;
+
+        // 1. Cập nhật preview tại chỗ
+        setPreviewUrl(base64Image);
+
+        // 2. Lưu vào localStorage để không bị mất khi chuyển trang hay quay lại
+        localStorage.setItem("latest_uploaded_image", base64Image);
+
+        // 3. Cho người dùng xem trước 1.5 giây ở trang chủ rồi tự động chuyển sang trang /predict
+        setTimeout(() => {
+          router.push("/predict");
+        }, 1500);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Nút kích hoạt mở ô chọn file
+  const handleButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Sự kiện chọn file từ ổ đĩa
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+      processFile(e.target.files[0]);
     }
+  };
+
+  // Sự kiện Kéo - Thả file
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      processFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
   };
 
   return (
     <div className="flex min-h-screen bg-[#f8f9fc] font-sans">
       {/* ================= 1. SIDEBAR (THANH ĐIỀU HƯỚNG BÊN TRÁI) ================= */}
       <aside className="w-64 bg-[#1e133e] text-white flex flex-col justify-between relative overflow-hidden shrink-0">
-        {/* Background Họa Tiết Lá & Bướm Mờ */}
-        <div className="absolute left-0 bottom-0 opacity-10 pointer-events-none translate-y-10 -translate-x-10">
-          <svg width="250" height="250" viewBox="0 0 200 200" fill="none">
-            <path
-              d="M10 200 C 30 140, 80 80, 150 20"
-              stroke="#a855f7"
-              strokeWidth="2"
-            />
-            <path d="M40 160 Q 15 140 10 125 Q 35 130 50 150 Z" fill="#9333ea" />
-            <path d="M60 130 Q 80 110 95 115 Q 80 135 70 142 Z" fill="#9333ea" />
-          </svg>
-        </div>
-        <div className="absolute right-2 bottom-20 opacity-15 pointer-events-none rotate-12">
-          <svg width="60" height="60" viewBox="0 0 100 100" fill="#a855f7">
-            <path d="M50 50 C40 20, 10 25, 20 50 C5 65, 30 90, 50 60 C70 90, 95 65, 80 50 C90 25, 60 20, 50 50 Z" />
-          </svg>
-        </div>
-
         <div className="p-5 relative z-10">
-          {/* Logo System */}
           <div className="flex flex-col items-center text-center my-4">
             <svg
               width="50"
@@ -147,7 +184,6 @@ export default function HomePage() {
             </h1>
           </div>
 
-          {/* Nav Items */}
           <nav className="mt-8 space-y-1.5 text-xs">
             <Link
               href="/"
@@ -199,7 +235,6 @@ export default function HomePage() {
           </nav>
         </div>
 
-        {/* Footer Sidebar */}
         <div className="p-5 relative z-10 border-t border-purple-500/10">
           <Link
             href="/about"
@@ -211,9 +246,8 @@ export default function HomePage() {
         </div>
       </aside>
 
-      {/* ================= 2. MAIN CONTENT (NỘI DUNG CHÍNH) ================= */}
+      {/* ================= 2. MAIN CONTENT ================= */}
       <main className="flex-1 p-8 overflow-y-auto">
-        {/* Header - User Profile */}
         <div className="flex justify-between items-start mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
@@ -227,7 +261,6 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Admin User Button */}
           <div className="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-full border border-gray-200 shadow-sm cursor-pointer hover:bg-gray-50 transition-colors">
             <div className="w-7 h-7 bg-purple-100 rounded-full flex items-center justify-center text-purple-600">
               <User size={16} />
@@ -240,8 +273,11 @@ export default function HomePage() {
         </div>
 
         {/* ================= 3. UPLOAD BANNER SECTION ================= */}
-        <div className="bg-gradient-to-r from-[#f1eeff] via-[#f7f5ff] to-[#e8e3ff] rounded-2xl border-2 border-dashed border-purple-300/80 p-6 sm:p-8 mb-10 relative overflow-hidden flex flex-col md:flex-row items-center justify-between min-h-[220px]">
-          {/* Vùng tải ảnh */}
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          className="bg-gradient-to-r from-[#f1eeff] via-[#f7f5ff] to-[#e8e3ff] rounded-2xl border-2 border-dashed border-purple-300/80 p-6 sm:p-8 mb-10 relative overflow-hidden flex flex-col md:flex-row items-center justify-between min-h-[220px]"
+        >
           <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left z-10">
             <div className="w-14 h-14 bg-purple-600/10 rounded-2xl flex items-center justify-center text-purple-600 mb-3">
               <Upload size={28} />
@@ -254,38 +290,43 @@ export default function HomePage() {
               Kéo thả ảnh vào đây hoặc chọn ảnh từ máy
             </p>
 
-            <label className="cursor-pointer bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium px-5 py-2.5 rounded-xl shadow-md shadow-purple-200 transition-all flex items-center gap-2">
+            {/* Input file bị ẩn */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+
+            {/* Nút bấm kích hoạt upload */}
+            <button
+              type="button"
+              onClick={handleButtonClick}
+              className="cursor-pointer bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium px-5 py-2.5 rounded-xl shadow-md shadow-purple-200 transition-all flex items-center gap-2"
+            >
               <ImageIcon size={16} />
               <span>Chọn ảnh</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </label>
+            </button>
 
             <p className="text-[10px] text-gray-400 mt-3">
               Hỗ trợ định dạng: JPG, JPEG, PNG (Tối đa 10MB)
             </p>
           </div>
 
-          {/* Hình minh họa con bướm xanh & hoa đinh hương */}
-          <div className="w-full md:w-1/2 h-48 md:h-full flex justify-end items-center mt-4 md:mt-0 pointer-events-none">
+          {/* Vùng xem trước ảnh (Preview) */}
+          <div className="w-full md:w-1/2 h-48 md:h-full flex justify-end items-center mt-4 md:mt-0">
             <img
-              src="https://images.unsplash.com/photo-1543852786-1cf6624b9987?q=80&w=800&auto=format&fit=crop"
+              src={previewUrl}
               alt="Butterfly Preview"
-              className="h-44 md:h-52 object-cover rounded-2xl shadow-md border-2 border-white/80"
+              className="h-44 md:h-52 w-full md:w-auto max-w-[280px] object-cover rounded-2xl shadow-md border-2 border-white/80 transition-all duration-300"
             />
           </div>
         </div>
 
-        {/* ================= 4. SPECIES GALLERY (DANH SÁCH LOÀI BƯỚM) ================= */}
+        {/* ================= 4. SPECIES GALLERY ================= */}
         <div>
           <div className="flex items-center gap-2 mb-4">
-            <svg width="20" height="20" viewBox="0 0 100 100" fill="#6b21a8">
-              <path d="M50 50 C40 20, 10 25, 20 50 C5 65, 30 90, 50 60 C70 90, 95 65, 80 50 C90 25, 60 20, 50 50 Z" />
-            </svg>
             <h3 className="text-sm font-bold text-gray-800">
               Một số loài bướm trong hệ thống
             </h3>

@@ -1,15 +1,17 @@
-import streamlit as st
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
+from services.predict_service import predict_butterfly_image
 
-# Kiểm tra trạng thái đăng nhập
-if "is_logged_in" not in st.session_state:
-    st.session_state["is_logged_in"] = False
+router = APIRouter(prefix="/predict", tags=["Prediction"])
 
-# Điều hướng màn hình
-if not st.session_state["is_logged_in"]:
-    # Nếu chưa đăng nhập -> Hiển thị trang Login
-    import views.login as login
-    login.show_login_page()
-else:
-    # Đã đăng nhập -> Mở Trang chủ / Menu chính
-    import views.home as home
-    home.show_home_page()
+@router.post("/")
+async def predict(file: UploadFile = File(...)):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File phải là hình ảnh!")
+        
+    image_bytes = await file.read()
+    result = predict_butterfly_image(image_bytes)
+    
+    return {
+        "status": "success",
+        "data": result
+    }
