@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Home,
@@ -24,73 +24,26 @@ import {
 export default function HistoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSpecies, setSelectedSpecies] = useState("Tất cả loài");
+  
+  // State lưu danh sách lịch sử thật từ Backend
+  const [historyData, setHistoryData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Dữ liệu mẫu danh sách lịch sử nhận diện
-  const historyData = [
-    {
-      id: "01",
-      name: "Monarch Butterfly",
-      scientific: "Danaus plexippus",
-      confidence: 94.6,
-      time: "12/05/2024",
-      subTime: "10:23:45",
-      image: "https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?q=80&w=400&auto=format&fit=crop",
-    },
-    {
-      id: "02",
-      name: "Swallowtail Butterfly",
-      scientific: "Papilio machaon",
-      confidence: 92.1,
-      time: "12/05/2024",
-      subTime: "09:58:12",
-      image: "https://images.unsplash.com/photo-1557008075-7f2c5efa4cfd?q=80&w=400&auto=format&fit=crop",
-    },
-    {
-      id: "03",
-      name: "Painted Lady",
-      scientific: "Vanessa cardui",
-      confidence: 88.7,
-      time: "11/05/2024",
-      subTime: "16:31:07",
-      image: "https://images.unsplash.com/photo-1535083783855-76ae62b2914e?q=80&w=400&auto=format&fit=crop",
-    },
-    {
-      id: "04",
-      name: "Peacock Butterfly",
-      scientific: "Aglais io",
-      confidence: 91.3,
-      time: "11/05/2024",
-      subTime: "14:22:33",
-      image: "https://images.unsplash.com/photo-1563281577-a7be47e20db9?q=80&w=400&auto=format&fit=crop",
-    },
-    {
-      id: "05",
-      name: "Common Blue",
-      scientific: "Polyommatus icarus",
-      confidence: 89.5,
-      time: "10/05/2024",
-      subTime: "11:05:21",
-      image: "https://images.unsplash.com/photo-1543852786-1cf6624b9987?q=80&w=400&auto=format&fit=crop",
-    },
-    {
-      id: "06",
-      name: "Plain Tiger",
-      scientific: "Danaus chrysippus",
-      confidence: 90.2,
-      time: "09/05/2024",
-      subTime: "18:45:09",
-      image: "https://images.unsplash.com/photo-1500320821405-8fc1732359ee?q=80&w=400&auto=format&fit=crop",
-    },
-    {
-      id: "07",
-      name: "Great Eggfly",
-      scientific: "Hypolimnas bolina",
-      confidence: 85.4,
-      time: "08/05/2024",
-      subTime: "15:17:48",
-      image: "https://images.unsplash.com/photo-1534043464124-3be32fe000c9?q=80&w=400&auto=format&fit=crop",
-    },
-  ];
+  // Gọi API lấy lịch sử từ FastAPI khi trang vừa được tải
+  useEffect(() => {
+  fetch("http://localhost:8000/predict/") 
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.status === "success" || data.success) {
+        setHistoryData(data.data);
+      }
+      setLoading(false);
+    })
+    .catch((err) => {
+      console.error("Lỗi khi tải lịch sử:", err);
+      setLoading(false);
+    });
+}, []);
 
   return (
     <div className="flex min-h-screen bg-[#f8f9fc] font-sans">
@@ -157,7 +110,6 @@ export default function HistoryPage() {
               Nhận diện
             </Link>
 
-            {/* Active Item: Lịch sử nhận diện */}
             <Link
               href="/history"
               className="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-600 text-white font-medium shadow-md shadow-purple-900/40"
@@ -236,7 +188,6 @@ export default function HistoryPage() {
         {/* ================= BỘ LỌC VÀ TÌM KIẾM ================= */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div className="flex flex-wrap items-center gap-3">
-            {/* Chọn Khoảng Thời Gian */}
             <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-600 shadow-sm">
               <span>01/05/2024</span>
               <span className="text-gray-300">→</span>
@@ -244,7 +195,6 @@ export default function HistoryPage() {
               <Calendar size={14} className="text-gray-400 ml-2 cursor-pointer" />
             </div>
 
-            {/* Select Loại Bướm */}
             <div className="relative">
               <select
                 value={selectedSpecies}
@@ -259,7 +209,6 @@ export default function HistoryPage() {
               <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
 
-            {/* Ô Tìm Kiếm */}
             <div className="relative w-64">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -272,7 +221,6 @@ export default function HistoryPage() {
             </div>
           </div>
 
-          {/* Nút Xóa Tất Cả */}
           <button className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 bg-white hover:bg-red-50 hover:border-red-200 text-gray-600 hover:text-red-600 rounded-xl text-xs font-medium transition-colors shadow-sm">
             <Trash2 size={14} />
             <span>Xóa tất cả</span>
@@ -294,66 +242,87 @@ export default function HistoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-xs">
-                {historyData.map((item) => (
-                  <tr key={item.id} className="hover:bg-purple-50/30 transition-colors">
-                    {/* ID */}
-                    <td className="py-3 px-4 text-center font-medium text-gray-500">
-                      {item.id}
-                    </td>
-
-                    {/* Ảnh Bướm */}
-                    <td className="py-3 px-4">
-                      <div className="w-16 h-12 rounded-lg overflow-hidden bg-gray-100 border border-gray-100">
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </td>
-
-                    {/* Kết quả nhận diện */}
-                    <td className="py-3 px-4">
-                      <h4 className="font-bold text-gray-800">{item.name}</h4>
-                      <p className="text-[11px] text-gray-400 italic mt-0.5">
-                        {item.scientific}
-                      </p>
-                    </td>
-
-                    {/* Độ tin cậy */}
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold text-emerald-600 w-11">
-                          {item.confidence}%
-                        </span>
-                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-purple-600 rounded-full"
-                            style={{ width: `${item.confidence}%` }}
-                          />
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Thời gian */}
-                    <td className="py-3 px-4 text-gray-600">
-                      <div className="font-medium">{item.time}</div>
-                      <div className="text-[10px] text-gray-400 mt-0.5">{item.subTime}</div>
-                    </td>
-
-                    {/* Thao tác */}
-                    <td className="py-3 px-4">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:text-purple-600 hover:border-purple-300 hover:bg-purple-50 transition-colors">
-                          <Eye size={14} />
-                        </button>
-                        <button className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-300 hover:bg-red-50 transition-colors">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-6 text-gray-400">
+                      Đang tải dữ liệu lịch sử...
                     </td>
                   </tr>
-                ))}
+                ) : historyData.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-6 text-gray-400">
+                      Chưa có lịch sử nhận diện nào.
+                    </td>
+                  </tr>
+                ) : (
+                  historyData.map((item: any, index: number) => {
+                    // Xử lý chuyển đổi chuỗi confidence (ví dụ: "94.6%") thành số để hiện thanh progress bar
+                    let confNum = 0;
+                    if (item.confidence) {
+                      confNum = parseFloat(item.confidence.toString().replace("%", ""));
+                    }
+
+                    return (
+                      <tr key={item.id || index} className="hover:bg-purple-50/30 transition-colors">
+                        {/* ID */}
+                        <td className="py-3 px-4 text-center font-medium text-gray-500">
+                          {index + 1}
+                        </td>
+
+                        {/* Ảnh Bướm */}
+                        <td className="py-3 px-4">
+                          <div className="w-16 h-12 rounded-lg overflow-hidden bg-gray-100 border border-gray-100">
+                            <img
+                              src={item.image_path || "https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?q=80&w=400&auto=format&fit=crop"}
+                              alt="Butterfly"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </td>
+
+                        {/* Kết quả nhận diện */}
+                        <td className="py-3 px-4">
+                          <h4 className="font-bold text-gray-800">{item.predicted_class}</h4>
+                          <p className="text-[11px] text-gray-400 italic mt-0.5">
+                            Danaus plexippus {/* Hoặc hiển thị scientific nếu cơ sở dữ liệu có lưu */}
+                          </p>
+                        </td>
+
+                        {/* Độ tin cậy */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-emerald-600 w-11">
+                              {item.confidence}
+                            </span>
+                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-purple-600 rounded-full"
+                                style={{ width: `${confNum}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Thời gian */}
+                        <td className="py-3 px-4 text-gray-600">
+                          <div className="font-medium">{item.created_at}</div>
+                        </td>
+
+                        {/* Thao tác */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:text-purple-600 hover:border-purple-300 hover:bg-purple-50 transition-colors">
+                              <Eye size={14} />
+                            </button>
+                            <button className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-300 hover:bg-red-50 transition-colors">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -361,7 +330,7 @@ export default function HistoryPage() {
 
         {/* ================= PHÂN TRANG (PAGINATION) ================= */}
         <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-gray-500">
-          <span>Hiển thị 1 - 7 trong 23 kết quả</span>
+          <span>Hiển thị dữ liệu từ Cơ sở dữ liệu</span>
 
           <div className="flex items-center gap-1">
             <button className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-400 transition-colors">
@@ -369,16 +338,6 @@ export default function HistoryPage() {
             </button>
             <button className="w-8 h-8 rounded-lg bg-purple-600 text-white font-medium flex items-center justify-center shadow-sm">
               1
-            </button>
-            <button className="w-8 h-8 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 flex items-center justify-center transition-colors">
-              2
-            </button>
-            <button className="w-8 h-8 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 flex items-center justify-center transition-colors">
-              3
-            </button>
-            <span className="px-1 text-gray-400">...</span>
-            <button className="w-8 h-8 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 flex items-center justify-center transition-colors">
-              4
             </button>
             <button className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-700 transition-colors">
               <ChevronRight size={14} />
@@ -389,7 +348,6 @@ export default function HistoryPage() {
             <select className="appearance-none bg-white border border-gray-200 rounded-lg px-3 py-1.5 pr-7 text-xs text-gray-600 outline-none cursor-pointer shadow-sm">
               <option>7 / trang</option>
               <option>10 / trang</option>
-              <option>20 / trang</option>
             </select>
             <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
