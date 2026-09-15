@@ -9,3 +9,5 @@ __pycache__/
 
 # (Tùy chọn) Chặn file model AI quá lớn nếu không dùng Git LFS
 backend/models/butterfly_resnet50.pth
+.env
+backend/.env

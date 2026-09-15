@@ -1,4 +1,6 @@
 import os
+from dotenv import load_dotenv
+load_dotenv() # Tự động nạp các biến từ file .env vào hệ thống
 import json
 import random
 import torch
